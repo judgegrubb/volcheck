@@ -469,13 +469,13 @@ static HChar* loc_filename;
 static UInt loc_linenum;
 
 /* This is "the future": how to find data symbols in Valgrind 3.4. */
-static Char sym_name[256];
+static HChar* sym_name;
 
-static Char*
+static HChar*
 lookup_symbol(Addr addr)
 {
-   OffT offset;
-   if (VG_(get_datasym_and_offset)(addr, sym_name, &offset)) {
+   PtrdiffT offset;
+   if (VG_(get_datasym_and_offset)(addr, &sym_name, &offset)) {
       return sym_name;
    }
    return 0;
