@@ -465,7 +465,7 @@ static Int   events_used = 0;
 
 
 static Bool loc_available;
-static Char loc_filename[256];
+static HChar loc_filename*;
 static UInt loc_linenum;
 
 /* This is "the future": how to find data symbols in Valgrind 3.4. */
@@ -704,7 +704,7 @@ trace_instr(Addr addr, SizeT size)
 */
    loc_available = 
       VG_(get_filename_linenum)(addr,
-                                loc_filename, 0,
+                                &loc_filename, 0,
                                 &loc_linenum);
 }
 
