@@ -642,6 +642,7 @@ record_event(Addr addr, SizeT size, EventKind kind)
    case 2:    i = 1;        break;
    case 4:    i = 2;        break;
    case 8:    i = 3;        break;
+   case 16:   i = 4;        break;
    default:    tl_assert(0);    break;
    }
    counts[i] += 1;
@@ -1245,7 +1246,7 @@ print_addr_accesses(const AddrRecord *r, const ULong *cnts,
    int i;
    int size;
    
-   for (i = 0, size = 1; i < 4; ++i, size *= 2) {
+   for (i = 0, size = 1; i < 5; ++i, size *= 2) {
       ULong n = cnts[i];
       if (n != 0) {
          VG_(printf)("  %-8s  %08p  %d %llu\n", kind, r->addr, size, n);
