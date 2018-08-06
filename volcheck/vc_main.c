@@ -1337,12 +1337,12 @@ static void vc_pre_clo_init(void)
    VG_(details_bug_reports_to)  (VG_BUGS_TO);
    VG_(details_avg_translation_sizeB) ( 200 );
 
-   VG_(basic_tool_funcs)          (lk_post_clo_init,
-                                   lk_instrument,
-                                   lk_fini);
-   VG_(needs_command_line_options)(lk_process_cmd_line_option,
-                                   lk_print_usage,
-                                   lk_print_debug_usage);
+   VG_(basic_tool_funcs)          (vc_post_clo_init,
+                                   vc_instrument,
+                                   vc_fini);
+   VG_(needs_command_line_options)(vc_process_cmd_line_option,
+                                   vc_print_usage,
+                                   vc_print_debug_usage);
 
    VG_(clo_vex_control).iropt_level = 0;
 }
