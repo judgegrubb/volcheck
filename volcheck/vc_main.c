@@ -186,7 +186,7 @@
  * the top of this file. */
 static Bool clo_basic_counts      = True;
 static Bool clo_detailed_counts   = False;
-static Bool clo_trace_mem         = False;
+static Bool clo_trace_mem         = True;
 
 static Bool clo_print_mem_per     = True;
 static Bool clo_print_mem_summary = True;
@@ -219,7 +219,7 @@ static void vc_print_usage(void)
    VG_(printf)(
 "    --basic-counts=no|yes     count instructions, jumps, etc. [yes]\n"
 "    --detailed-counts=no|yes  count loads, stores and alu ops [no]\n"
-"    --trace-mem=no|yes        trace all loads and stores [no]\n"
+"    --trace-mem=no|yes        trace all loads and stores [yes]\n"
 "    --trace-superblocks=no|yes  trace all superblock entries [no]\n"
 "    --fnname=<name>           count calls to <name> (only used if\n"
 "                              --basic-count=yes)  [main]\n"
