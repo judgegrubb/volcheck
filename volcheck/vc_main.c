@@ -465,7 +465,7 @@ static Int   events_used = 0;
 
 
 static Bool loc_available;
-static HChar loc_filename*;
+static HChar* loc_filename;
 static UInt loc_linenum;
 
 /* This is "the future": how to find data symbols in Valgrind 3.4. */
