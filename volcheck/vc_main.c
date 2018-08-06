@@ -475,7 +475,7 @@ static Char*
 lookup_symbol(Addr addr)
 {
    OffT offset;
-   if (VG_(get_datasym_and_offset)(addr, sym_name, 256, &offset)) {
+   if (VG_(get_datasym_and_offset)(addr, sym_name, &offset)) {
       return sym_name;
    }
    return 0;
@@ -703,8 +703,7 @@ trace_instr(Addr addr, SizeT size)
 */
    loc_available = 
       VG_(get_filename_linenum)(addr,
-                                loc_filename, sizeof(loc_filename),
-                                0, 0, 0,
+                                loc_filename, 0,
                                 &loc_linenum);
 }
 
@@ -1240,7 +1239,7 @@ IRSB* vc_instrument ( VgCallbackClosure* closure,
 }
 
 static void
-print_addr_accesses(const AddrRecord *r const ULong *cnts,
+print_addr_accesses(const AddrRecord *r, const ULong *cnts,
         const char *kind)
 {
    int i;
