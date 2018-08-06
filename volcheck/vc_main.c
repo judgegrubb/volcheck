@@ -674,8 +674,8 @@ trace_event(Addr addr, SizeT size, EventKind kind)
      return;
    }
    /* Only trace globals. */
-   if ((VG_(seginfo_sect_kind)(addr) != Vg_SectBSS)
-       && (VG_(seginfo_sect_kind)(addr) != Vg_SectData))
+   if ((VG_(DebugInfo_sect_kind)(0, addr) != Vg_SectBSS)
+       && (VG_(DebugInfo_sect_kind)(0, addr) != Vg_SectData))
      return;
 
    record = record_event(addr, size, kind);
