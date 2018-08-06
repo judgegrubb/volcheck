@@ -520,9 +520,9 @@ typedef struct AddrRecord {
    
    Addr            addr;
    HChar *        symbol;
-   ULong        loads[4]; /* XXX hardcoded ick */
-   ULong        stores[4];
-   ULong        modifies[4];
+   ULong        loads[5]; /* XXX hardcoded ick */
+   ULong        stores[5];
+   ULong        modifies[5];
 } AddrRecord;
 
 #define ADDR_TABLE_SIZE (4096)
