@@ -4,7 +4,7 @@
 
 <chapter id="vc-manual" xreflabel="Lackey">
 
-<title>Lackey: an example tool</title>
+<title>Volcheck: a volatile memory tracking tool</title>
 
 <para>To use this tool, you must specify
 <option>--tool=volcheck</option> on the Valgrind
@@ -14,19 +14,20 @@ command line.</para>
 <sect1 id="vc-manual.overview" xreflabel="Overview">
 <title>Overview</title>
 
-<para>Lackey is a simple Valgrind tool that does various kinds of basic
-program measurement.  It adds quite a lot of simple instrumentation to the
-program's code.  It is primarily intended to be of use as an example tool,
-and consequently emphasises clarity of implementation over
-performance.</para>
+<para>Volcheck is a simple Valgrind tool that traces the memory loads and 
+stores of potentially volatile variables. It centrally focuses on variables 
+in the BSS and Data regions of the binary, which the user can then filter 
+to only pay attention to volatile variables.</para>
+
+<para>Volcheck is heavily based on the Lackey and None Valgrind tools.</para>
 
 </sect1>
 
 
 <sect1 id="vc-manual.options" xreflabel="Lackey Command-line Options">
-<title>Lackey Command-line Options</title>
+<title>Volcheck Command-line Options</title>
 
-<para>Lackey-specific command-line options are:</para>
+<para>Volcheck-specific command-line options are:</para>
 
 <!-- start of xi:include in the manpage -->
 <variablelist id="vc.opts.list">
@@ -36,7 +37,7 @@ performance.</para>
       <option><![CDATA[--basic-counts=<no|yes> [default: yes] ]]></option>
     </term>
     <listitem>
-      <para>When enabled, Lackey prints the following statistics and
+      <para>When enabled, Volcheck prints the following statistics and
       information about the execution of the client program:</para>
 
       <orderedlist>
@@ -85,7 +86,7 @@ performance.</para>
       <option><![CDATA[--detailed-counts=<no|yes> [default: no] ]]></option>
     </term>
     <listitem>
-      <para>When enabled, Lackey prints a table containing counts of loads,
+      <para>When enabled, Volcheck prints a table containing counts of loads,
       stores and ALU operations, differentiated by their IR types.
       The IR types are identified by their IR name ("I1", "I8", ... "I128",
       "F32", "F64", and "V128").</para>
@@ -94,10 +95,10 @@ performance.</para>
 
   <varlistentry id="opt.trace-mem" xreflabel="--trace-mem">
     <term>
-      <option><![CDATA[--trace-mem=<no|yes> [default: no] ]]></option>
+      <option><![CDATA[--trace-mem=<no|yes> [default: yes] ]]></option>
     </term>
     <listitem>
-      <para>When enabled, Lackey prints the size and address of almost every
+      <para>When enabled, Volcheck prints the size and address of almost every
       memory access made by the program.  See the comments at the top of
       the file <computeroutput>volcheck/vc_main.c</computeroutput> for details
       about the output format, how it works, and inaccuracies in the address
@@ -105,19 +106,41 @@ performance.</para>
     </listitem>
   </varlistentry>
 
-  <varlistentry id="opt.trace-superblocks" xreflabel="--trace-superblocks">
+  <!-- Volcheck specific flags -->
+  <varlistentry id="opt.print-mem-per" xreflabel="--print-mem-per">
     <term>
-      <option><![CDATA[--trace-superblocks=<no|yes> [default: no] ]]></option>
+      <option><![CDATA[--print-mem-per=<no|yes> [default: yes] ]]></option>
     </term>
     <listitem>
-      <para>When enabled, 
-      Lackey prints out the address of every superblock 
-      (a single entry, multiple exit, linear chunk of code) executed by the
-      program.  This is primarily of interest to Valgrind developers.  See
-      the comments at the top of the file
-      <computeroutput>volcheck/vc_main.c</computeroutput> for details about
-      the output format.  Note that this option produces large amounts of
-      output.</para>
+      <para>When enabled, Volcheck prints a trace of every variable in BSS and 
+      Data area storage, specifies the variable's name and location, as well as 
+      if the access is a load or store, and the variable's size. This can grow 
+      quickly depending on the size of the program.</para>
+    </listitem>
+  </varlistentry>
+
+  <varlistentry id="opt.print-mem-summary" xreflabel="--print-mem-summary">
+    <term>
+      <option><![CDATA[--print-mem-summary=<no|yes> [default: yes] ]]></option>
+    </term>
+    <listitem>
+      <para>When enabled, Volcheck prints an access summary for all variables in 
+      BSS and Data segments of the binary. This includes a file location, symbol 
+      name of the variable, the variable size, and a count of how many times it 
+      was loaded or stored.</para>
+    </listitem>
+  </varlistentry>
+
+  <varlistentry id="opt.missing-loc-ok" xreflabel="--missing-loc-ok">
+    <term>
+      <option><![CDATA[--missing-loc-ok=<no|yes> [default: no] ]]></option>
+    </term>
+    <listitem>
+      <para>When enabled, Volcheck will print the traces and summaries of accesses 
+      to variables where Valgrind can't identify their original file location. In 
+      our experience, we have found setting this flag to true is often necessary to 
+      trace global volatile variables when debug flags are not used during compilation.
+      </para>
     </listitem>
   </varlistentry>
 

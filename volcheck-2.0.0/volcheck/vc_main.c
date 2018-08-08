@@ -4,8 +4,17 @@
 /*--------------------------------------------------------------------*/
 
 /*
-   This file is part of Lackey, an example Valgrind tool that does
-   some simple program measurement and tracing.
+   This file is part of Volcheck, an Valgrind tool for checking accesses
+   to volatile storage.
+
+   Copyright (C) 2018 Elijah Grubb
+      grubb@cs.utah.edu
+
+   Copyright (C) 2007, 2008 Eric Eide
+      eeide@cs.utah.edu
+
+   This file is derived from `lackey/lk_main.c' in the Valgrind software.
+   That file is:
 
    Copyright (C) 2002-2017 Nicholas Nethercote
       njn@valgrind.org
@@ -38,12 +47,9 @@
 // * --detailed-counts: do more detailed counts:  number of loads, stores
 //                      and ALU operations of different sizes.
 // * --trace-mem=yes:   trace all (data) memory accesses.
-// * --trace-superblocks=yes:   
-//                      trace all superblock entries.  Mostly of interest
-//                      to the Valgrind developers.
 //
 // The code for each kind of instrumentation is guarded by a clo_* variable:
-// clo_basic_counts, clo_detailed_counts, clo_trace_mem and clo_trace_sbs.
+// clo_basic_counts, clo_detailed_counts, clo_trace_mem.
 //
 // If you want to modify any of the instrumentation code, look for the code
 // that is guarded by the relevant clo_* variable (eg. clo_trace_mem)
@@ -140,34 +146,6 @@
 // uses the same basic technique for tracing memory accesses, but also groups
 // events together for processing into twos and threes so that fewer C calls
 // are made and things run faster.
-//
-// Specific Details about --trace-superblocks=yes
-// ----------------------------------------------
-// Valgrind splits code up into single entry, multiple exit blocks
-// known as superblocks.  By itself, --trace-superblocks=yes just
-// prints a message as each superblock is run:
-//
-//  SB 04013170
-//  SB 04013177
-//  SB 04013173
-//  SB 04013177
-//
-// The hex number is the address of the first instruction in the
-// superblock.  You can see the relationship more obviously if you use
-// --trace-superblocks=yes and --trace-mem=yes together.  Then a "SB"
-// message at address X is immediately followed by an "instr:" message
-// for that address, as the first instruction in the block is
-// executed, for example:
-//
-//  SB 04014073
-//  I  04014073,3
-//   L 7FEFFF7F8,8
-//  I  04014076,4
-//  I  0401407A,3
-//  I  0401407D,3
-//  I  04014080,3
-//  I  04014083,6
-
 
 #include "pub_tool_basics.h"
 #include "pub_tool_tooliface.h"
@@ -217,12 +195,16 @@ static Bool vc_process_cmd_line_option(const HChar* arg)
 static void vc_print_usage(void)
 {  
    VG_(printf)(
-"    --basic-counts=no|yes     count instructions, jumps, etc. [yes]\n"
-"    --detailed-counts=no|yes  count loads, stores and alu ops [no]\n"
-"    --trace-mem=no|yes        trace all loads and stores [yes]\n"
-"    --trace-superblocks=no|yes  trace all superblock entries [no]\n"
-"    --fnname=<name>           count calls to <name> (only used if\n"
-"                              --basic-count=yes)  [main]\n"
+"    --basic-counts=no|yes      count instructions, jumps, etc. [yes]\n"
+"    --detailed-counts=no|yes   count loads, stores and alu ops [no]\n"
+"    --trace-mem=no|yes         trace all loads and stores [yes]\n"
+"    --print-mem-per=no|yes     output a message for every load and store\n"
+"                               [yes]\n"
+"    --print-mem-summary=no|yes output a memory access summary [yes]\n"
+"    --missing-loc-ok=no|yes    trace loads and stores that occur at points\n"
+"                               without source locations [no]\n"
+"    --fnname=<name>            count calls to <name> (only used if\n"
+"                               --basic-count=yes)  [main]\n"
    );
 }
 
@@ -426,6 +408,11 @@ typedef
    so that reads and writes to the same address can be merged into a modify.
    Beyond that, larger numbers just potentially induce more spilling due to
    extending live ranges of address temporaries. */
+
+
+/*
+ * Eric Edit, Tue Mar 25 2008: try to increase precision via `NO_EVENT_BUFFER'.
+ */
 #define NO_EVENT_BUFFER 1
 #if NO_EVENT_BUFFER
 #  define N_EVENTS 1
@@ -468,7 +455,6 @@ static Bool loc_available;
 static HChar* loc_filename;
 static UInt loc_linenum;
 
-/* This is "the future": how to find data symbols in Valgrind 3.4. */
 static HChar* sym_name;
 
 static HChar*
@@ -482,6 +468,7 @@ lookup_symbol(Addr addr)
 }
 
 #if 0
+// This is how we found data symbols before Valgrind 3.4
 /*
  * XXX --- need to cache symbols
  */
@@ -520,7 +507,7 @@ typedef struct AddrRecord {
    
    Addr            addr;
    HChar *        symbol;
-   ULong        loads[5]; /* XXX hardcoded ick */
+   ULong        loads[5]; /* XXX hardcoded ick, had to be updated from 2008 */
    ULong        stores[5];
    ULong        modifies[5];
 } AddrRecord;
@@ -702,6 +689,7 @@ trace_instr(Addr addr, SizeT size)
 /*
    VG_(printf)("I  %08lx,%lu\n", addr, size);
 */
+   // Determine where we are from the instruciton being loaded
    loc_available = 
       VG_(get_filename_linenum)(addr,
                                 &loc_filename, 0,
@@ -758,15 +746,15 @@ static void flushEvents(IRSB* sb)
       }
 
       if (helperAddr) {
-      // Add the helper.
-      argv = mkIRExprVec_2( ev->addr, mkIRExpr_HWord( ev->size ) );
-      di   = unsafeIRDirty_0_N( /*regparms*/2, 
-                                helperName, VG_(fnptr_to_fnentry)( helperAddr ),
-                                argv );
-      if (ev->guard) {
-         di->guard = ev->guard;
-      }
-      addStmtToIRSB( sb, IRStmt_Dirty(di) );
+         // Add the helper.
+         argv = mkIRExprVec_2( ev->addr, mkIRExpr_HWord( ev->size ) );
+         di   = unsafeIRDirty_0_N( /*regparms*/2, 
+                                   helperName, VG_(fnptr_to_fnentry)( helperAddr ),
+                                   argv );
+         if (ev->guard) {
+            di->guard = ev->guard;
+         }
+         addStmtToIRSB( sb, IRStmt_Dirty(di) );
       }
    }
 
@@ -1333,8 +1321,8 @@ static void vc_pre_clo_init(void)
    VG_(details_version)         (NULL);
    VG_(details_description)     ("a tool for checking the use of volatile storage");
    VG_(details_copyright_author)(
-      "Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote.");
-   VG_(details_bug_reports_to)  (VG_BUGS_TO);
+      "Copyright (C) 2018, and GNU GPL'd, by Elijah Grubb.");
+   VG_(details_bug_reports_to)  ("grubb@cs.utah.edu");
    VG_(details_avg_translation_sizeB) ( 200 );
 
    VG_(basic_tool_funcs)          (vc_post_clo_init,
@@ -1343,7 +1331,21 @@ static void vc_pre_clo_init(void)
    VG_(needs_command_line_options)(vc_process_cmd_line_option,
                                    vc_print_usage,
                                    vc_print_debug_usage);
+   /* No core events to track */
 
+   /* Set the VEX control params.  See `libvex.h'. */
+   /*
+    * Turn the VEX optimizer off.  *THIS IS ESSENTIAL*.
+    *
+    * When the VEX optimizer is enabled, it will happily remove instructions
+    * that appear to be useless.  For example, it will remove the read of `g_1'
+    * in the following code:
+    *
+    *   volatile int g_1;
+    *   void f() { int size = (g_1 && 0); }
+    *
+    * Such optimizations defeat the entire purpose of this tool.
+    */
    VG_(clo_vex_control).iropt_level = 0;
 }
 
